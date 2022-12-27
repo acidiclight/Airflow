@@ -19,6 +19,7 @@ namespace Airflow
     {
         public static string ApplicationDataDirectory => AppDomain.CurrentDomain.BaseDirectory;
 
+        private bool isInFlow = false;
         private ConcurrentQueue<Action> pendingActions = new ConcurrentQueue<Action>();
         private AudioSession targetSession;
         private float keyPressScore = 0.01f;
@@ -36,7 +37,7 @@ namespace Airflow
         private IConsoleMenu currentMenu;
         private List<ConsoleMenuChoice> currentChoices = new List<ConsoleMenuChoice>();
         private int currentChoice;
-        private const float airDecreaseInterval = 1f;
+        private const float airDecreaseInterval = 0.4f;
         private float timeSinceLastKeypress;
         private float timeSinceLastWarn;
 
@@ -93,11 +94,14 @@ namespace Airflow
 
         private void Update(float deltaSeconds)
         {
-            while (pendingActions.TryDequeue(out Action action))
+            if (pendingActions.TryDequeue(out Action action))
                 action?.Invoke();
             
             if (currentAir <= 0)
             {
+                if (isInFlow)
+                    isInFlow = false;
+                
                 var volume = targetSession.Volume;
                 if (Math.Abs(volume - lowAirVolume) > float.Epsilon)
                 {
@@ -107,7 +111,7 @@ namespace Airflow
                     targetSession.Volume += (deltaSeconds * 2) * sign;
                 }
             }
-            else if (currentAir <= 0.1)
+            else if (currentAir <= 0.1 && isInFlow)
             {
                 timeSinceLastWarn += deltaSeconds;
                 if (timeSinceLastWarn >= airCriticalInterval)
@@ -116,7 +120,7 @@ namespace Airflow
                     timeSinceLastWarn = 0;
                 }
             }
-            else if (currentAir <= 0.34f)
+            else if (currentAir <= 0.34f && isInFlow)
             {
                 timeSinceLastWarn += deltaSeconds;
                 if (timeSinceLastWarn >= airLowInterval)
@@ -127,13 +131,16 @@ namespace Airflow
             }
             else if (currentAir >= 1)
             {
+                if (!isInFlow)
+                    isInFlow = true;
+                
                 var volume = targetSession.Volume;
                 if (Math.Abs(volume - highAirVolume) > float.Epsilon)
                 {
                     var diff = highAirVolume - volume;
                     var sign = Math.Sign(diff);
 
-                    targetSession.Volume += (deltaSeconds / 2) * sign;
+                    targetSession.Volume += (deltaSeconds / 8) * sign;
                 }                
             }
 
@@ -161,7 +168,8 @@ namespace Airflow
                 continue;
             
             this.running = true;
-            this.currentAir = 0;
+            this.currentAir = 0.5f;
+            this.isInFlow = false;
             
             Console.Clear();
             PrintAirGuage();
@@ -192,12 +200,18 @@ namespace Airflow
             {
                 if (i < airInt)
                     Console.BackgroundColor = ConsoleColor.Red;
-                else Console.BackgroundColor = ConsoleColor.Black;
+                else Console.BackgroundColor = ConsoleColor.DarkGray;
 
                 Console.Write(" ");
             }
 
-            Console.WriteLine("] {0}%", airPercent);
+            Console.BackgroundColor = ConsoleColor.Black;
+
+            Console.Write("] {0}%", airPercent);
+            if (isInFlow)
+                Console.WriteLine(" [FLOW]");
+            else
+                Console.WriteLine();
 
             Console.WriteLine();
             Console.WriteLine("Press ESC to stop");
@@ -253,7 +267,7 @@ namespace Airflow
         public void SetTargetSession(AudioSession session)
         {
             this.targetSession = session;
-            session.Volume = 0;
+            session.Volume = lowAirVolume;
         }
         
         private void GoBack()
