@@ -29,6 +29,8 @@ namespace Airflow
         private float currentAir;
         private const float airLowInterval = 0.900f;
         private const float airCriticalInterval = 0.400f;
+        private SoundEffect flowLostSound;
+        private SoundEffect flowGainedSound;
         private SoundEffect navigateSound;
         private SoundEffect selectSound;
         private SoundEffect backSound;
@@ -45,12 +47,14 @@ namespace Airflow
         {
             string soundsPath = Path.Combine(ApplicationDataDirectory, "Sounds");
 
+            this.flowGainedSound = SoundEffect.FromFile(Path.Combine(soundsPath, "power of babylon.wav"));
             this.navigateSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Navigate.wav"));
             this.selectSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Select.wav"));
             this.backSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Back.wav"));
             this.lowAirSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Warning.wav"));
+            this.flowLostSound = SoundEffect.FromFile(Path.Combine(soundsPath, "next time.wav"));
 
-            
+
         }
 
         private void HandleKeyDown(object sender, Keys e)
@@ -100,8 +104,11 @@ namespace Airflow
             if (currentAir <= 0)
             {
                 if (isInFlow)
+                {
                     isInFlow = false;
-                
+                    flowLostSound.Play(0.3f);
+                }
+
                 var volume = targetSession.Volume;
                 if (Math.Abs(volume - lowAirVolume) > float.Epsilon)
                 {
@@ -132,8 +139,11 @@ namespace Airflow
             else if (currentAir >= 1)
             {
                 if (!isInFlow)
+                {
                     isInFlow = true;
-                
+                    flowGainedSound.Play(0.3f);
+                }
+
                 var volume = targetSession.Volume;
                 if (Math.Abs(volume - highAirVolume) > float.Epsilon)
                 {
@@ -426,14 +436,18 @@ namespace Airflow
             stream = null;
         }
 
-        public void Play()
+        public void Play(float volume = 1)
         {
+            if (volume < 0) volume = 0;
+            else if (volume > 1) volume = 1;
+            
             if (player == null)
                 throw new ObjectDisposedException(nameof(SoundEffect));
 
             player.Stop();
             if (channel != null)
                 channel.Position = 0;
+            player.Volume = volume;
             player.Play();
         }
         
