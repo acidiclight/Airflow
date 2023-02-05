@@ -56,8 +56,31 @@ namespace Airflow
             this.backSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Back.wav"));
             this.lowAirSound = SoundEffect.FromFile(Path.Combine(soundsPath, "Warning.wav"));
             this.flowLostSound = SoundEffect.FromFile(Path.Combine(soundsPath, "next time.wav"));
+            
+            keyListener.DestructiveKeyPressed += OnDestructiveKeyPressed;
+            keyListener.KeyPressed += OnKeyPressed;
+        }
 
+        private void OnKeyPressed()
+        {
+            pendingActions.Enqueue(() =>
+            {
+                if (!running)
+                    return;
 
+                IncreaseAir();
+            });
+        }
+
+        private void OnDestructiveKeyPressed()
+        {
+            pendingActions.Enqueue(() =>
+            {
+                if (!running)
+                    return;
+
+                DecreaseAir();
+            });
         }
 
         private void DecreaseAir()

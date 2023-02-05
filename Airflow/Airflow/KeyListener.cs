@@ -27,6 +27,7 @@ public class KeyListener : IDisposable
 
         IntPtr display = Xlib.XOpenDisplay(":0");
         
+        Span<byte> previous = stackalloc byte[32];
         Span<byte> current = stackalloc byte[32];
 
         KeyCode backspaceKeyCode = Xlib.XKeysymToKeycode(display, (KeySym)KeySyms.BackSpace);
@@ -41,19 +42,27 @@ public class KeyListener : IDisposable
             
             // Loop through each byte in the keymap, to determine if any key is pressed
             var isAnyKeyPressed = false;
+            var hasChanged = false;
             for (var i = 0; i < 32; i++)
             {
                 byte bCurrent = current[i];
+                byte bPrevious = previous[i];
+                
+                // has the state changed?
+                if (bPrevious != bCurrent)
+                    hasChanged = true;
+
+                previous[i] = bCurrent;
+                
                 // We know a key is pressed if any byte is > 0
                 if (bCurrent > 0)
                 {
                     isAnyKeyPressed = true;
-                    break;
                 }
             }
             
             // If any key is pressed at all, check for backspace or delete
-            if (isAnyKeyPressed)
+            if (isAnyKeyPressed && hasChanged)
             {
                 if (X11KeyGrabber.IsKeyDown(current, backspaceKeyCode)
                     || X11KeyGrabber.IsKeyDown(current, metaBackspaceKeyCode)
