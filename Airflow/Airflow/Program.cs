@@ -10,8 +10,10 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Windows.Forms;
-using NAudio.Wave;
+
+#if WINDOWS
+using system.Windows.Forms;
+#endif
 
 namespace Airflow
 {
@@ -42,6 +44,7 @@ namespace Airflow
         private const float airDecreaseInterval = 0.4f;
         private float timeSinceLastKeypress;
         private float timeSinceLastWarn;
+        private KeyListener keyListener = new KeyListener();
 
         private void LoadResources()
         {
@@ -56,26 +59,6 @@ namespace Airflow
 
 
         }
-
-        private void HandleKeyDown(object sender, Keys e)
-        {
-            pendingActions.Enqueue(() =>
-            {
-                ;
-                if (!running)
-                    return;
-
-                if (e == Keys.Delete || e == Keys.Back)
-                {
-                    DecreaseAir();
-                }
-                else
-                {
-                    IncreaseAir();
-                }
-            });
-        }
-
 
         private void DecreaseAir()
         {
@@ -359,21 +342,38 @@ namespace Airflow
             this.currentChoice = 00;
         }
 
+        public void StartListening()
+        {
+            this.keyListener.StartListening();
+        }
+
+        public void StopListening()
+        {
+            this.keyListener.StopListening();
+        }
+        
         [STAThread]
         public static void Main(string[] args)
         {
             var program = new Program();
-            var hook = new LowLevelKeyboardHook();
-            hook.OnKeyPressed += program.HandleKeyDown;
 
-            var thread = new Thread(program.Run);
-            thread.Start();
+            var thread = new Thread(StartGuiMessageLoop);
+            thread.Start(program);
 
-            hook.HookKeyboard();
+            program.Run();
+        }
+
+        private static void StartGuiMessageLoop(object ctx)
+        {
+            Program program = ctx as Program;
+
+            program.StartListening();
+
+#if WINDOWS
+            System.Windows.Forms.Application.Run();
+#endif
             
-            Application.Run();
-
-            hook.UnHookKeyboard();
+            program.StopListening();
         }
     }
 
@@ -408,55 +408,6 @@ namespace Airflow
         public void Choose(Program program)
         {
             selectDelegate?.Invoke(program);
-        }
-    }
-
-    public class SoundEffect : IDisposable
-    {
-        private WaveStream stream;
-        private WaveOutEvent player;
-        private WaveChannel32 channel;
-        
-        private SoundEffect(string path)
-        {
-            stream = new WaveFileReader(path);
-            channel = new WaveChannel32(stream);
-            player = new WaveOutEvent();
-            player.Init(channel);
-        }
-
-        public void Dispose()
-        {
-            player?.Dispose();
-            channel?.Dispose();
-            stream?.Dispose();
-
-            player = null;
-            channel = null;
-            stream = null;
-        }
-
-        public void Play(float volume = 1)
-        {
-            if (volume < 0) volume = 0;
-            else if (volume > 1) volume = 1;
-            
-            if (player == null)
-                throw new ObjectDisposedException(nameof(SoundEffect));
-
-            player.Stop();
-            if (channel != null)
-                channel.Position = 0;
-            player.Volume = volume;
-            player.Play();
-        }
-        
-        public static SoundEffect FromFile(string path)
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException(path);
-
-            return new SoundEffect(path);
         }
     }
 }
