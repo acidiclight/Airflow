@@ -23,7 +23,7 @@ namespace Airflow
 
         private bool isInFlow = false;
         private ConcurrentQueue<Action> pendingActions = new ConcurrentQueue<Action>();
-        private AudioSession targetSession;
+        private IAudioSession targetSession;
         private float keyPressScore = 0.01f;
         private float lowAirVolume = 0.25f;
         private float highAirVolume = 1f;
@@ -257,7 +257,7 @@ namespace Airflow
             }
         }
 
-        public void SetTargetSession(AudioSession session)
+        public void SetTargetSession(IAudioSession session)
         {
             this.targetSession = session;
             session.Volume = lowAirVolume;

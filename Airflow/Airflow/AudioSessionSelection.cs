@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using NAudio.CoreAudioApi;
 
 namespace Airflow;
 
 public class AudioSessionSelection : IConsoleMenu
 {
-    private List<AudioSession> sessions = new List<AudioSession>();
+    private List<IAudioSession> sessions = new List<IAudioSession>();
 
     public string Title => "Audio Session Selection";
     public string Description => @"Please select the application you'd like Airflow to control.";
@@ -37,11 +38,37 @@ public class AudioSessionSelection : IConsoleMenu
     {
         this.RefreshSources();
     }
-        
+
     private void RefreshSources()
     {
+
         this.sessions.Clear();
-        
+
+#if WINDOWS
+        this.GetWin32Sessions();
+#else
+        this.GetPulseAudioSessions();
+#endif
+    }
+
+    private void GetPulseAudioSessions()
+    {
+        var sinkInputs = PulseAudioClient.ListSinkInputs();
+
+        foreach (PulseAudioSinkInput sinkInput in sinkInputs)
+        {
+            int index = sinkInput.SinkIndex;
+
+            if (!sinkInput.TryGetPropertyByName("application.name", out string? appName))
+                appName = "Unknown application";
+
+            float volume = sinkInput.LoudestVolume;
+            this.sessions.Add(new PulseAudioSession(index, appName, volume));
+        }
+    }
+
+    private void GetWin32Sessions()
+    {
         var deviceEnumerator = new MMDeviceEnumerator();
         var defaultDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 
@@ -49,36 +76,7 @@ public class AudioSessionSelection : IConsoleMenu
         for (var i = 0; i < sessions.Count; i++)
         {
             var session = sessions[i];
-            this.sessions.Add(new AudioSession(session));
+            this.sessions.Add(new Win32AudioSession(session));
         }
-        
-        
-    }
-}
-
-public class AudioSession
-{
-    private AudioSessionControl control;
-
-    public AudioSession(AudioSessionControl control)
-    {
-        this.control = control;
-    }
-
-    public float Volume
-    {
-        get => control.SimpleAudioVolume.Volume;
-        set => control.SimpleAudioVolume.Volume = value;
-    }
-
-    public string DisplayName => GetProcessName(control.GetProcessID);
-
-    private string GetProcessName(uint pid)
-    {
-        var process = System.Diagnostics.Process.GetProcessById((int) pid);
-        if (!string.IsNullOrWhiteSpace(process.MainWindowTitle))
-            return process.MainWindowTitle;
-
-        return process.ProcessName;
     }
 }
