@@ -351,6 +351,11 @@ namespace Airflow
         {
             this.keyListener.StopListening();
         }
+
+        private void RunX11KeyboardListener()
+        {
+            this.keyListener.STartX11Loop();
+        }
         
         [STAThread]
         public static void Main(string[] args)
@@ -371,6 +376,8 @@ namespace Airflow
 
 #if WINDOWS
             System.Windows.Forms.Application.Run();
+            #else
+            program.RunX11KeyboardListener();
 #endif
             
             program.StopListening();

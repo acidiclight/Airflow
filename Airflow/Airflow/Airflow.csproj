@@ -7,11 +7,13 @@
         <ImplicitUsings>disable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <EnableWinForms Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</EnableWinForms>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="CoreAudio" Version="1.24.0" />
       <PackageReference Include="NAudio" Version="2.1.0" />
+      <PackageReference Include="X11" Version="1.0.6" />
     </ItemGroup>
 
     <ItemGroup>
