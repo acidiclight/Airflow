@@ -30,12 +30,9 @@ public class KeyListener : IDisposable
         Span<byte> previous = stackalloc byte[32];
         Span<byte> current = stackalloc byte[32];
 
-        KeyCode backspaceKeyCode = Xlib.XKeysymToKeycode(display, (KeySym)KeySyms.BackSpace);
-        KeyCode metaBackspaceKeyCode = Xlib.XKeysymToKeycode(display, (KeySym)KeySyms.Meta_BackSpace);
-        KeyCode deleteKeyCode = Xlib.XKeysymToKeycode(display, (KeySym)KeySyms.Delete);
-        KeyCode metaDeleteKeyCode = Xlib.XKeysymToKeycode(display, (KeySym)KeySyms.Meta_Delete);
-        
-        
+        XKeyCode backspace = new XKeyCode(2, 64);
+        XKeyCode deleteKeyCode = new XKeyCode(14, 128);
+
         while (true)
         {
             XLibB.QueryKeymap(display, current);
@@ -64,10 +61,7 @@ public class KeyListener : IDisposable
             // If any key is pressed at all, check for backspace or delete
             if (isAnyKeyPressed && hasChanged)
             {
-                if (X11KeyGrabber.IsKeyDown(current, backspaceKeyCode)
-                    || X11KeyGrabber.IsKeyDown(current, metaBackspaceKeyCode)
-                    || X11KeyGrabber.IsKeyDown(current, deleteKeyCode)
-                    || X11KeyGrabber.IsKeyDown(current, metaDeleteKeyCode))
+                if (backspace.IsKeyDown(current) || deleteKeyCode.IsKeyDown(current))
                     DestructiveKeyPressed?.Invoke();
                 else
                     KeyPressed?.Invoke();
