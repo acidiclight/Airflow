@@ -26,6 +26,7 @@ namespace Airflow
         private IAudioSession targetSession;
         private float keyPressScore = 0.01f;
         private float lowAirVolume = 0.25f;
+        private float lowAirVolumePipewire = 0.6f;
         private float highAirVolume = 1f;
         private bool running = false;
         private float currentAir;
@@ -104,6 +105,10 @@ namespace Airflow
 
         private void Update(float deltaSeconds)
         {
+            float lowVolume = Environment.OSVersion.Platform == PlatformID.Unix
+                ? lowAirVolumePipewire
+                : lowAirVolume;
+            
             if (pendingActions.TryDequeue(out Action action))
                 action?.Invoke();
             
@@ -116,9 +121,9 @@ namespace Airflow
                 }
 
                 var volume = targetSession.Volume;
-                if (Math.Abs(volume - lowAirVolume) > float.Epsilon)
+                if (Math.Abs(volume - lowVolume) > float.Epsilon)
                 {
-                    var diff = lowAirVolume - volume;
+                    var diff = lowVolume - volume;
                     var sign = Math.Sign(diff);
 
                     targetSession.Volume += (deltaSeconds * 2) * sign;
@@ -283,7 +288,9 @@ namespace Airflow
         public void SetTargetSession(IAudioSession session)
         {
             this.targetSession = session;
-            session.Volume = lowAirVolume;
+            session.Volume = Environment.OSVersion.Platform == PlatformID.Unix
+                ? lowAirVolumePipewire
+                : lowAirVolume;
         }
         
         private void GoBack()
